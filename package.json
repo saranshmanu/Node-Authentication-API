@@ -1,0 +1,28 @@
+{
+  "name": "node-authentication",
+  "version": "1.0.0",
+  "description": "This is a learning project to create authentication API using nodejs",
+  "main": "index.js",
+  "scripts": {
+    "test": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saranshmanu/Node-Authentication-API.git"
+  },
+  "keywords": [
+    "node"
+  ],
+  "author": "Saransh Mittal",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/saranshmanu/Node-Authentication-API/issues"
+  },
+  "homepage": "https://github.com/saranshmanu/Node-Authentication-API#readme",
+  "dependencies": {
+    "express": "^4.16.4",
+    "mongoose": "^5.4.17",
+    "nodemon": "^1.18.10"
+  }
+}
