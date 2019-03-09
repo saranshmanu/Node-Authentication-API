@@ -1,6 +1,6 @@
 const router = require('express').Router()
 
-var admin = require('../Controller/admin')
+var admin = require('../Controllers/admin')
 
 router.get('/admin/banAccount', admin.banAccount)
 
