@@ -1,5 +1,5 @@
-var express = require('express')
-var promise = require('bluebird')
+var Promise = require('bluebird')
+var crypto = require('crypto')
 var userModel = require('../Models/user')
 
 function testRoute(req, res) {
@@ -19,24 +19,37 @@ function login(email, password) {
                     "success": false,
                     "message": "Error in querying the database"
                 }))
-            } else if (result != null) {
-                let userPassword = result['password']
-                if (password == userPassword) {
-                    resolve(JSON.stringify({
-                        "success": true,
-                        "message": "Successfull login"
-                    }))
-                } else {
-                    reject(JSON.stringify({
-                        "success": false,
-                        "message": "Password doesn't match"
-                    }))
-                }
-            } else {
+            } else if (result == null) {
                 reject(JSON.stringify({
                     "success": false,
                     "message": "Error - User doesn't exists"
                 }))
+            } else {
+                let emailConfirmation = result['verifiedEmail']
+                let userBanned = result['banned']
+                let userPasswordHash = result['password']
+                let givenPasswordHash = crypto.createHash('sha256').update(password).digest('base64')
+                if (emailConfirmation == false) {
+                    reject(JSON.stringify({
+                        "success": false,
+                        "message": "Error - Email not yet confirmed"
+                    }))
+                } else if (userBanned == true) {
+                    reject(JSON.stringify({
+                        "success": false,
+                        "message": "Error - User is banned from using the service"
+                    }))
+                } else if (givenPasswordHash != userPasswordHash) {
+                    reject(JSON.stringify({
+                        "success": false,
+                        "message": "Error - Password doesn't match"
+                    }))
+                } else {
+                    resolve(JSON.stringify({
+                        "success": true,
+                        "message": "Successfull login"
+                    }))
+                }
             }
         })
     })
@@ -59,14 +72,15 @@ function register(email, password, name) {
                 }))
             } else {
                 let today = new Date();
+                let passwordHash = crypto.createHash('sha256').update(password).digest('base64')
                 let user = new userModel({
                     email: email,
-                    password: password,
+                    password: passwordHash,
                     name: name,
                     registeredDate: today.toISOString(),
                     verifiedEmail: false,
                     banned: false,
-                    passwordHistory: []
+                    passwordHistory: [passwordHash]
                 })
                 user.save(function (error) {
                     if (error) {
