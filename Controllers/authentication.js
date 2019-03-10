@@ -1,6 +1,6 @@
 var Promise = require('bluebird')
 var crypto = require('crypto')
-var userModel = require('../Models/user')
+var UserModel = require('../Models/user')
 
 function testRoute(req, res) {
     console.log(req.body)
@@ -11,7 +11,7 @@ function testRoute(req, res) {
 
 function login(email, password) {
     return new Promise((resolve, reject) => {
-        userModel.findOne({ 
+        UserModel.findOne({ 
             email: email 
         }, (error, result) => {
             if (error) {
@@ -57,7 +57,7 @@ function login(email, password) {
 
 function register(email, password, name) {
     return new Promise((resolve, reject) => {
-        userModel.findOne({ 
+        UserModel.findOne({ 
             email: email 
         }, (error, result) => {
             if (error) {
@@ -73,7 +73,7 @@ function register(email, password, name) {
             } else {
                 let today = new Date();
                 let passwordHash = crypto.createHash('sha256').update(password).digest('base64')
-                let user = new userModel({
+                let user = new UserModel({
                     email: email,
                     password: passwordHash,
                     name: name,
@@ -108,12 +108,98 @@ function resetPassword(req, res) {
     res.send('resetPassword')
 }
 
-function changePassword(req, res) {
-    res.send('changePassword')
+function changePassword(email, currentPassword, newPassword) {
+    return new Promise((resolve, reject) => {
+        UserModel.findOne({ 
+            email: email 
+        }, (error, result) => {
+            if (error) {
+                reject(JSON.stringify({
+                    "success": false,
+                    "message": "Error in querying the database"
+                }))
+            } else if (result == null) {
+                reject(JSON.stringify({
+                    "success": false,
+                    "message": "Error - User doesn't exists"
+                }))
+            } else {
+                let passwordHash = crypto.createHash('sha256').update(currentPassword).digest('base64')
+                let newPasswordHash = crypto.createHash('sha256').update(newPassword).digest('base64')
+                if(passwordHash != result['password']) {
+                    reject(JSON.stringify({
+                        "success": false,
+                        "message": "Error - Password doesn't match"
+                    }))
+                } else if(passwordHash == newPasswordHash) {
+                    reject(JSON.stringify({
+                        "success": false,
+                        "message": "Error - Password similar to the new password"
+                    }))
+                } else {
+                    UserModel.updateOne({
+                        email: email
+                    }, {password: newPasswordHash, $push: { passwordHistory: newPasswordHash }}, {upsert:true}, function (error) {
+                        if (error) {
+                            reject(JSON.stringify({
+                                "success": false,
+                                "message": "Error in querying the database"
+                            }))
+                        } else {
+                            resolve(JSON.stringify({
+                                "success": true,
+                                "message": "Password updated successfully"
+                            }))
+                        }
+                    })
+                }
+            }
+        })
+    })
 }
 
-function deleteAccount(req, res) {
-    res.send('deleteAccount')
+function deleteAccount(email, password) {
+    return new Promise((resolve, reject) => {
+        UserModel.findOne({ 
+            email: email 
+        }, (error, result) => {
+            if (error) {
+                reject(JSON.stringify({
+                    "success": false,
+                    "message": "Error in querying the database"
+                }))
+            } else if (result == null) {
+                reject(JSON.stringify({
+                    "success": false,
+                    "message": "Error - User doesn't exists"
+                }))
+            } else {
+                let passwordHash = crypto.createHash('sha256').update(password).digest('base64')
+                if(passwordHash != result['password']) {
+                    reject(JSON.stringify({
+                        "success": false,
+                        "message": "Error - Password doesn't match"
+                    }))
+                } else {
+                    UserModel.deleteOne({
+                        email: email
+                    }, function (error) {
+                        if (error) {
+                            reject(JSON.stringify({
+                                "success": false,
+                                "message": "Error in querying the database"
+                            }))
+                        } else {
+                            resolve(JSON.stringify({
+                                "success": true,
+                                "message": "User data successfully deleted"
+                            }))
+                        }
+                    })
+                }
+            }
+        })
+    })
 }
 
 module.exports = {
