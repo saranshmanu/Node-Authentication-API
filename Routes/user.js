@@ -9,14 +9,18 @@ router.post('/auth/login', (req, res) => {
 })
 
 router.post('/auth/register', (req, res) => {
+    var name = req.body['name']
     var email = req.body['email']
     var password = req.body['password']
-    var name = req.body['name']
     authentication.register(email, password, name).then(result => res.send(result)).catch(error => res.send(error))
 })
 
-router.post('/auth/resetPassword', (req, res) => {
-    authentication.resetPassword().then(result => res.send(result)).catch(error => res.send(error))
+router.post('/auth/forgetPasswordEmail', (req, res) => {
+    authentication.forgetPasswordMail().then(result => res.send(result)).catch(error => res.send(error))
+})
+
+router.post('/auth/forgetPassword', (req, res) => {
+    authentication.forgetPassword().then(result => res.send(result)).catch(error => res.send(error))
 })
 
 router.post('/auth/changePassword', (req, res) => {
@@ -32,8 +36,14 @@ router.post('/auth/deleteAccount', (req, res) => {
     authentication.deleteAccount(email, password).then(result => res.send(result)).catch(error => res.send(error))
 })
 
-router.get('/auth/confirmEmail', (req, res) => {
-    authentication.confirmEmail().then(result => res.send(result)).catch(error => res.send(error))
+router.get('/auth/sendConfirmEmail', (req, res) => {
+    let email = req.body['email']
+    authentication.sendConfirmEmail(email).then(result => res.send(result)).catch(error => res.send(error))
+})
+
+router.get('/auth/confirmEmail/:token', (req, res) => {
+    let token = req.params.token
+    authentication.confirmEmail(token).then(result => res.send(result)).catch(error => res.send(error))
 })
 
 router.post('/auth/test', authentication.testRoute)

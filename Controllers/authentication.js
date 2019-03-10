@@ -1,6 +1,9 @@
 var Promise = require('bluebird')
-var crypto = require('crypto')
+var Crypto = require('crypto')
 var UserModel = require('../Models/user')
+var Configuration = require('../Constants/configuration')
+var Utils = require('./utils')
+var jwt = require('jsonwebtoken')
 
 function testRoute(req, res) {
     console.log(req.body)
@@ -38,7 +41,7 @@ function login(email, password) {
             let emailConfirmation = result['verifiedEmail']
             let userBanned = result['banned']
             let userPasswordHash = result['password']
-            let givenPasswordHash = crypto.createHash('sha256').update(password).digest('base64')
+            let givenPasswordHash = Crypto.createHash('sha256').update(password).digest('base64')
             if (emailConfirmation == false) {
                 reject(errorMessage(false, "Error - Email not yet confirmed"))
             } else if (userBanned == true) {
@@ -61,7 +64,7 @@ function register(email, password, name) {
             reject(errorMessage(false, "User already registered before"))
         }).catch(() => {
             let today = new Date();
-            let passwordHash = crypto.createHash('sha256').update(password).digest('base64')
+            let passwordHash = Crypto.createHash('sha256').update(password).digest('base64')
             let user = new UserModel({
                 email: email,
                 password: passwordHash,
@@ -88,8 +91,8 @@ function register(email, password, name) {
 function changePassword(email, currentPassword, newPassword) {
     return new Promise((resolve, reject) => {
         checkForUserByEmail(email).then(result => {
-            let passwordHash = crypto.createHash('sha256').update(currentPassword).digest('base64')
-            let newPasswordHash = crypto.createHash('sha256').update(newPassword).digest('base64')
+            let passwordHash = Crypto.createHash('sha256').update(currentPassword).digest('base64')
+            let newPasswordHash = Crypto.createHash('sha256').update(newPassword).digest('base64')
             if(passwordHash != result['password']) {
                 reject(errorMessage(false, "Error - Password doesn't match"))
             } else if(passwordHash == newPasswordHash) {
@@ -115,7 +118,7 @@ function changePassword(email, currentPassword, newPassword) {
 function deleteAccount(email, password) {
     return new Promise((resolve, reject) => {
         checkForUserByEmail(email).then(result => {
-            let passwordHash = crypto.createHash('sha256').update(password).digest('base64')
+            let passwordHash = Crypto.createHash('sha256').update(password).digest('base64')
             if(passwordHash != result['password']) {
                 reject(errorMessage(false, "Error - Password doesn't match"))
             } else {
@@ -136,20 +139,61 @@ function deleteAccount(email, password) {
     })
 }
 
-function confirmEmail(req, res) {
-    res.send('confirmEmail')
+function sendConfirmEmail(confirmEmail) {
+    return new Promise((resolve, reject) => {
+        checkForUserByEmail(email).then(result => {
+            var token = jwt.sign({
+                email: confirmEmail
+            }, Configuration.JWT_SECRET, { expiresIn: 60 * 60 });
+            var confirmationLink = '<a href = "localhost:8888/user/auth/confirmEmail/' + token + '">Confirm</a>'
+            Utils.sendEmail(confirmEmail, "Confirm to access your account", "Confirmation Link", confirmationLink)
+            resolve(JSON.stringify({
+                "success": true,
+                "message": "Confirm mail sent to the user"
+            }))
+        }).catch(err => reject(err))
+    })
 }
 
-function resetPassword(req, res) {
-    res.send('resetPassword')
+function confirmEmail(token) {
+    jwt.verify(token, Configuration.JWT_SECRET, function(err, decoded) {
+        if(err) {
+            reject(errorMessage(false, "Email not confirmed"))
+        } else {
+            let email = decoded['email']
+            UserModel.updateOne({
+                email: email
+            }, {verifiedEmail: true}, function (error) {
+                if (error) {
+                    reject(errorMessage(false, "Error in querying the database"))
+                } else {
+                    Utils.sendEmail(email, "Welcome Sir", "Hello, World!", "")
+                    resolve(JSON.stringify({
+                        "success": true,
+                        "message": "Email successfully confirmed"
+                    }))
+                }
+            })
+        }
+    });
+}
+
+function forgetPassword(email) {
+    res.send('forgetPassword')
+}
+
+function forgetPasswordMail(req, res) {
+    res.send('forgetPassword')
 }
 
 module.exports = {
     login: login,
     register: register,
-    resetPassword: resetPassword,
+    forgetPassword: forgetPassword,
+    forgetPasswordMail: forgetPasswordMail,
     changePassword: changePassword,
     deleteAccount: deleteAccount,
+    sendConfirmEmail: sendConfirmEmail,
     confirmEmail: confirmEmail,
     testRoute: testRoute
 }
