@@ -78,6 +78,7 @@ function register(email, password, name) {
                 if (error) {
                     reject(errorMessage(false, "Error in querying the database"))
                 } else {
+                    sendConfirmEmail(email)
                     resolve(JSON.stringify({
                         "success": true,
                         "message": "User created successfully"
@@ -158,7 +159,7 @@ function sendConfirmEmail(confirmEmail) {
 function confirmEmail(token) {
     jwt.verify(token, Configuration.JWT_SECRET, function(err, decoded) {
         if(err) {
-            reject(errorMessage(false, "Email not confirmed"))
+            reject(errorMessage(false, "Email not confirmed as the token is invalid"))
         } else {
             let email = decoded['email']
             UserModel.updateOne({
